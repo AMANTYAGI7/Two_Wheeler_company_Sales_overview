@@ -1,0 +1,83 @@
+/* ============================================================
+   Project: Two_Wheeler_Company_Sales_Overview
+   Database: AdventureWorksDW2019
+   Description:
+      This project prepares cleaned and transformed dimension
+      and fact tables for sales analysis of a two-wheeler company.
+   Author: Aman Tyagi
+   ============================================================ */
+
+
+/* ============================================================
+   DIM_PRODUCT  (Cleaned Product Table)
+   ============================================================ */
+SELECT  
+      p.[ProductKey],
+      p.[ProductAlternateKey]        AS ProductItemCode,
+      p.[EnglishProductName]         AS ProductName,
+      psc.[EnglishProductSubcategoryName] AS SubCategory,       -- Joined from DimProductSubcategory
+      pc.[EnglishProductCategoryName]    AS CategoryName,       -- Joined from DimProductCategory
+      p.[Color]                      AS ProductColor,
+      p.[Size]                       AS ProductSize,
+      p.[ProductLine]                AS ProductLine,
+      p.[ModelName]                  AS ProductModelName,
+      p.[EnglishDescription]         AS ProductDescription,
+      COALESCE(p.[Status], 'Outdated') AS ProductStatus
+FROM [AdventureWorksDW2019].[dbo].[DimProduct] AS p
+LEFT JOIN dbo.DimProductSubcategory AS psc
+       ON p.ProductSubcategoryKey = psc.ProductSubcategoryKey
+LEFT JOIN dbo.DimProductCategory AS pc
+       ON psc.ProductCategoryKey = pc.ProductCategoryKey;
+
+
+/* ============================================================
+   DIM_DATE  (Cleaned Date Table)
+   ============================================================ */
+SELECT 
+      [DateKey], 
+      [FullDateAlternateKey] AS Date,
+      [EnglishDayNameOfWeek] AS Day,
+      [WeekNumberOfYear]     AS Week, 
+      [EnglishMonthName]     AS Month,
+      LEFT([EnglishMonthName], 3) AS ShortMonth,
+      [MonthNumberOfYear]    AS MonthNo, 
+      [CalendarQuarter]      AS Quarter, 
+      [CalendarYear]         AS Year
+FROM [AdventureWorksDW2019].[dbo].[DimDate]
+WHERE CalendarYear >= 2019;
+
+
+/* ============================================================
+   DIM_CUSTOMER  (Cleaned Customer Table)
+   ============================================================ */
+SELECT 
+      c.[CustomerKey] AS CustomerKey,
+      c.[FirstName]   AS FirstName,
+      c.[LastName]    AS LastName,
+      c.FirstName + ' ' + c.LastName AS FullName,
+      CASE 
+          WHEN c.[Gender] = 'M' THEN 'Male' 
+          WHEN c.[Gender] = 'F' THEN 'Female' 
+      END AS Gender,
+      c.[DateFirstPurchase] AS FirstPurchaseDate,
+      g.[City]              AS CustomerCity
+FROM [AdventureWorksDW2019].[dbo].[DimCustomer] AS c
+LEFT JOIN [dbo].[DimGeography] AS g
+       ON c.GeographyKey = g.GeographyKey
+ORDER BY CustomerKey ASC;
+
+
+/* ============================================================
+   FACT_INTERNET_SALES  (Filtered Sales Data)
+   ============================================================ */
+SELECT  
+      [ProductKey],
+      [OrderDateKey],
+      [DueDateKey],
+      [ShipDateKey],
+      [CustomerKey],
+      [SalesOrderNumber],
+      [SalesAmount]
+FROM [AdventureWorksDW2019].[dbo].[FactInternetSales]
+WHERE LEFT(OrderDateKey, 4) >= YEAR(GETDATE()) - 6
+ORDER BY OrderDateKey ASC;
